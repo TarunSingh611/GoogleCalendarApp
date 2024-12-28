@@ -1,5 +1,6 @@
-// client/src/components/EventForm.jsx
 import React, { useState } from 'react';
+import DatePicker from 'react-datepicker';
+import "react-datepicker/dist/react-datepicker.css";
 import '../styles/EventForm.css';
 import ApiClient from '../services/apiClient';
 
@@ -7,8 +8,8 @@ const EventForm = ({ userId, onClose, onEventCreated }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    startDateTime: '',
-    endDateTime: ''
+    startDateTime: new Date(),
+    endDateTime: new Date(new Date().getTime() + 3600000) // Current time + 1 hour
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -19,6 +20,13 @@ const EventForm = ({ userId, onClose, onEventCreated }) => {
     setError(null);
 
     try {
+      // Format dates to ISO string before sending to API
+      const formattedData = {
+        ...formData,
+        startDateTime: formData.startDateTime.toISOString(),
+        endDateTime: formData.endDateTime.toISOString()
+      };
+
       const response = await ApiClient.fetch(`/api/events`, {
         method: 'POST',
         headers: {
@@ -26,7 +34,7 @@ const EventForm = ({ userId, onClose, onEventCreated }) => {
         },
         body: JSON.stringify({
           userId,
-          ...formData
+          ...formattedData
         }),
       });
 
@@ -82,26 +90,31 @@ const EventForm = ({ userId, onClose, onEventCreated }) => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="startDateTime">Start Date & Time</label>
-            <input
-              type="datetime-local"
-              id="startDateTime"
-              name="startDateTime"
-              value={formData.startDateTime}
-              onChange={handleChange}
+            <label>Start Date & Time</label>
+            <DatePicker
+              selected={formData.startDateTime}
+              onChange={(date) => setFormData(prev => ({ ...prev, startDateTime: date }))}
+              showTimeSelect
+              timeFormat="HH:mm"
+              timeIntervals={15}
+              dateFormat="MMMM d, yyyy h:mm aa"
+              className="form-control"
               required
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="endDateTime">End Date & Time</label>
-            <input
-              type="datetime-local"
-              id="endDateTime"
-              name="endDateTime"
-              value={formData.endDateTime}
-              onChange={handleChange}
+            <label>End Date & Time</label>
+            <DatePicker
+              selected={formData.endDateTime}
+              onChange={(date) => setFormData(prev => ({ ...prev, endDateTime: date }))}
+              showTimeSelect
+              timeFormat="HH:mm"
+              timeIntervals={15}
+              dateFormat="MMMM d, yyyy h:mm aa"
+              className="form-control"
               required
+              minDate={formData.startDateTime}
             />
           </div>
 

@@ -19,9 +19,8 @@ const EventList = ({ userId }) => {
   const fetchEvents = async () => {
     try {
       const response = await ApiClient.fetch(`/api/events/${userId}`);
-      if (!response.ok) throw new Error('Failed to fetch events');
-      const data = await response.json();
-      setEvents(data);
+      if (response.statusCode !== 200) throw new Error('Failed to fetch events');
+      setEvents(response.data);
       setError(null);
     } catch (err) {
       setError(err.message);
