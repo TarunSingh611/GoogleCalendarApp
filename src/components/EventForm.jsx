@@ -1,6 +1,7 @@
 // client/src/components/EventForm.jsx
 import React, { useState } from 'react';
 import '../styles/EventForm.css';
+import ApiClient from '../services/apiClient';
 
 const EventForm = ({ userId, onClose, onEventCreated }) => {
   const [formData, setFormData] = useState({
@@ -18,7 +19,7 @@ const EventForm = ({ userId, onClose, onEventCreated }) => {
     setError(null);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/events`, {
+      const response = await ApiClient.fetch(`/api/events`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

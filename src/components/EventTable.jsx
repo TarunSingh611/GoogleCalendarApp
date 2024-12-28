@@ -1,6 +1,7 @@
 // client/src/components/EventTable.js
 import React, { useState, useEffect } from 'react';
 import '../styles/EventTable.css';
+import ApiClient from '../services/apiClient';
 
 function EventTable({ userId }) {
   const [events, setEvents] = useState([]);
@@ -14,7 +15,7 @@ function EventTable({ userId }) {
 
   const fetchEvents = async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/events/${userId}`);
+      const response = await ApiClient.fetch(`/events/${userId}`);
       const data = await response.json();
       setEvents(data);
     } catch (error) {

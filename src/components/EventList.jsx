@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import '../styles/EventList.css';
+import ApiClient from '../services/apiClient';
 
 const EventList = ({ userId }) => {
   const [events, setEvents] = useState([]);
@@ -17,7 +18,7 @@ const EventList = ({ userId }) => {
 
   const fetchEvents = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/events/${userId}`);
+      const response = await ApiClient.fetch(`/api/events/${userId}`);
       if (!response.ok) throw new Error('Failed to fetch events');
       const data = await response.json();
       setEvents(data);

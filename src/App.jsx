@@ -1,27 +1,28 @@
-// client/src/App.jsx
 import React, { useState, useEffect } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import EventList from './components/EventList';
 import EventForm from './components/EventForm';
+import AuthService from './services/authService';
+import ApiClient from './services/apiClient';
 import './styles/App.css';
 
 function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(AuthService.getUser());
   const [showEventForm, setShowEventForm] = useState(false);
   const [backendStatus, setBackendStatus] = useState('checking');
 
   useEffect(() => {
     checkBackendStatus();
+    const savedUser = AuthService.getUser();
+    if (savedUser) {
+      setUser(savedUser);
+    }
   }, []);
 
   const checkBackendStatus = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/status`);
-      if (response.ok) {
-        setBackendStatus('connected');
-      } else {
-        setBackendStatus('error');
-      }
+      const response = await ApiClient.fetch('/status');
+      setBackendStatus(response.status === 'OK' ? 'connected' : 'error');
     } catch (error) {
       setBackendStatus('error');
     }
@@ -29,53 +30,30 @@ function App() {
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
-      // First authenticate the user
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/google`, {
+      const response = await ApiClient.fetch('/api/auth/google', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ 
           tokenId: credentialResponse.credential 
         }),
       });
-  
-      if (!response.ok) {
-        throw new Error('Authentication failed');
-      }
-  
-      const data = await response.json();
-      setUser(data.user);
-      localStorage.setItem('token', data.token);
-  
-      // If you get a refresh token later, update it
-      if (credentialResponse.refresh_token) {
-        const refreshTokenResponse = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/auth/${data.user._id}/refresh-token`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${data.token}`
-            },
-            body: JSON.stringify({ 
-              refreshToken: credentialResponse.refresh_token 
-            }),
-          }
-        );
-  
-        if (!refreshTokenResponse.ok) {
-          console.warn('Failed to update refresh token');
-        }
-      }
+      if (!response.token) throw new Error('Authentication failed');
+
+      // const data = await response.json();
+      
+      // // Store auth data
+      AuthService.setTokens(response.token, credentialResponse.refresh_token);
+      AuthService.setUser(response.user);
+      setUser(response.user);
+
     } catch (error) {
       console.error('Login error:', error);
       alert('Failed to sign in with Google');
     }
   };
 
-  const handleEventCreated = () => {
-    setShowEventForm(false);
+  const handleLogout = () => {
+    AuthService.clearAuth();
+    setUser(null);
   };
 
   return (
@@ -90,9 +68,7 @@ function App() {
           <div className="login-container">
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
-              onError={() => {
-                console.log('Login Failed');
-              }}
+              onError={() => console.log('Login Failed')}
             />
           </div>
         ) : (
@@ -103,6 +79,12 @@ function App() {
               onClick={() => setShowEventForm(true)}
             >
               Create Calendar Event
+            </button>
+            <button 
+              className="logout-btn"
+              onClick={handleLogout}
+            >
+              Logout
             </button>
           </div>
         )}
@@ -116,7 +98,7 @@ function App() {
         <EventForm
           userId={user._id}
           onClose={() => setShowEventForm(false)}
-          onEventCreated={handleEventCreated}
+          onEventCreated={() => setShowEventForm(false)}
         />
       )}
     </div>
