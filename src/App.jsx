@@ -119,7 +119,6 @@ function App() {
         <EventForm
           userId={user._id}
           onClose={() => setShowEventForm(false)}
-          onEventCreated={() => setShowEventForm(false)}
         />
       )}
     </div>

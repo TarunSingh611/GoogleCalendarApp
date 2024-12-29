@@ -1,18 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import '../styles/EventForm.css';
 import ApiClient from '../services/apiClient';
 
-const EventForm = ({ userId, onClose, onEventCreated }) => {
+const EventForm = ({ userId, onClose, eventToEdit }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     startDateTime: new Date(),
-    endDateTime: new Date(new Date().getTime() + 3600000) // Current time + 1 hour
+    endDateTime: new Date(new Date().getTime() + 3600000)
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const isEditing = !!eventToEdit;
+
+  useEffect(() => {
+    if (eventToEdit) {
+      setFormData({
+        title: eventToEdit.title || '',
+        description: eventToEdit.description || '',
+        startDateTime: new Date(eventToEdit.startDateTime),
+        endDateTime: new Date(eventToEdit.endDateTime)
+      });
+    }
+  }, [eventToEdit]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,30 +32,43 @@ const EventForm = ({ userId, onClose, onEventCreated }) => {
     setError(null);
 
     try {
-      // Format dates to ISO string before sending to API
       const formattedData = {
         ...formData,
         startDateTime: formData.startDateTime.toISOString(),
         endDateTime: formData.endDateTime.toISOString()
       };
 
-      const response = await ApiClient.fetch(`/api/events`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,
-          ...formattedData
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create event');
+      let response;
+      if (isEditing) {
+        // Update existing event
+        response = await ApiClient.fetch(`/api/events/${eventToEdit.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            ...formattedData
+          }),
+        });
+      } else {
+        // Create new event
+        response = await ApiClient.fetch(`/api/events`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            ...formattedData
+          }),
+        });
       }
 
-      const data = await response.json();
-      onEventCreated(data);
+      if (!response.success) {
+        throw new Error(`Failed to ${isEditing ? 'update' : 'create'} event`);
+      }
+
       onClose();
     } catch (err) {
       setError(err.message);
@@ -60,10 +85,14 @@ const EventForm = ({ userId, onClose, onEventCreated }) => {
     }));
   };
 
+  const validateDates = () => {
+    return formData.endDateTime > formData.startDateTime;
+  };
+
   return (
     <div className="event-form-overlay">
       <div className="event-form">
-        <h2>Create New Event</h2>
+        <h2>{isEditing ? 'Edit Event' : 'Create New Event'}</h2>
         {error && <div className="error-message">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -75,6 +104,8 @@ const EventForm = ({ userId, onClose, onEventCreated }) => {
               value={formData.title}
               onChange={handleChange}
               required
+              placeholder="Enter event title"
+              className="form-control"
             />
           </div>
 
@@ -86,6 +117,8 @@ const EventForm = ({ userId, onClose, onEventCreated }) => {
               value={formData.description}
               onChange={handleChange}
               rows="3"
+              placeholder="Enter event description"
+              className="form-control"
             />
           </div>
 
@@ -93,13 +126,23 @@ const EventForm = ({ userId, onClose, onEventCreated }) => {
             <label>Start Date & Time</label>
             <DatePicker
               selected={formData.startDateTime}
-              onChange={(date) => setFormData(prev => ({ ...prev, startDateTime: date }))}
+              onChange={(date) => {
+                setFormData(prev => ({
+                  ...prev,
+                  startDateTime: date,
+                  // Automatically adjust end time if it's before start time
+                  endDateTime: prev.endDateTime < date ? 
+                    new Date(date.getTime() + 3600000) : 
+                    prev.endDateTime
+                }));
+              }}
               showTimeSelect
               timeFormat="HH:mm"
               timeIntervals={15}
               dateFormat="MMMM d, yyyy h:mm aa"
               className="form-control"
               required
+              placeholderText="Select start date and time"
             />
           </div>
 
@@ -115,16 +158,29 @@ const EventForm = ({ userId, onClose, onEventCreated }) => {
               className="form-control"
               required
               minDate={formData.startDateTime}
+              placeholderText="Select end date and time"
             />
           </div>
+
+          {!validateDates() && (
+            <div className="error-message">
+              End time must be after start time
+            </div>
+          )}
 
           <div className="form-actions">
             <button 
               type="submit" 
               className="submit-btn" 
-              disabled={loading}
+              disabled={loading || !validateDates()}
             >
-              {loading ? 'Creating...' : 'Create Event'}
+              {loading ? (
+                <span>
+                  {isEditing ? 'Updating...' : 'Creating...'}
+                </span>
+              ) : (
+                isEditing ? 'Update Event' : 'Create Event'
+              )}
             </button>
             <button 
               type="button" 
