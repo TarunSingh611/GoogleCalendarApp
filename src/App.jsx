@@ -25,6 +25,7 @@ function App() {
           client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
           scope: 'email profile https://www.googleapis.com/auth/calendar',
           ux_mode: 'popup', // Use 'popup' or 'redirect' based on your preference
+          redirect_uri: `${window.location.origin}/auth/callback`,
           callback: async (response) => {
             console.log('Authorization Code:', response.code);
 
