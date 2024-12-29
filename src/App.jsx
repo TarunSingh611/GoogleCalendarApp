@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { GoogleLogin } from '@react-oauth/google';
 import EventList from './components/EventList';
 import EventForm from './components/EventForm';
 import AuthService from './services/authService';
@@ -10,6 +9,7 @@ function App() {
   const [user, setUser] = useState(AuthService.getUser());
   const [showEventForm, setShowEventForm] = useState(false);
   const [backendStatus, setBackendStatus] = useState('checking');
+  const [googleClient, setGoogleClient] = useState(null);
 
   useEffect(() => {
     checkBackendStatus();
@@ -17,6 +17,43 @@ function App() {
     if (savedUser) {
       setUser(savedUser);
     }
+
+    // Initialize Google Identity Services
+    const initializeGoogleClient = () => {
+      if (window.google) {
+        const client = window.google.accounts.oauth2.initCodeClient({
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+          scope: 'email profile https://www.googleapis.com/auth/calendar',
+          ux_mode: 'popup', // Use 'popup' or 'redirect' based on your preference
+          callback: async (response) => {
+            console.log('Authorization Code:', response.code);
+
+            try {
+              // Send the authorization code to the backend
+              const backendResponse = await ApiClient.fetch('/api/auth/google', {
+                method: 'POST',
+                body: JSON.stringify({ code: response.code }),
+              });
+
+              if (!backendResponse.token) throw new Error('Authentication failed');
+
+              // Store auth data
+              AuthService.setTokens(backendResponse.token, backendResponse.refresh_token);
+              AuthService.setUser(backendResponse.user);
+              setUser(backendResponse.user);
+            } catch (error) {
+              console.error('Login error:', error);
+              alert('Failed to sign in with Google');
+            }
+          },
+        });
+        setGoogleClient(client);
+      } else {
+        console.error('Google Identity Services library not loaded');
+      }
+    };
+
+    initializeGoogleClient();
   }, []);
 
   const checkBackendStatus = async () => {
@@ -28,26 +65,11 @@ function App() {
     }
   };
 
-  const handleGoogleSuccess = async (credentialResponse) => {
-    try {
-      const response = await ApiClient.fetch('/api/auth/google', {
-        method: 'POST',
-        body: JSON.stringify({ 
-          tokenId: credentialResponse.credential 
-        }),
-      });
-      if (!response.token) throw new Error('Authentication failed');
-
-      // const data = await response.json();
-      
-      // // Store auth data
-      AuthService.setTokens(response.token, credentialResponse.refresh_token);
-      AuthService.setUser(response.user);
-      setUser(response.user);
-
-    } catch (error) {
-      console.error('Login error:', error);
-      alert('Failed to sign in with Google');
+  const handleLogin = () => {
+    if (googleClient) {
+      googleClient.requestCode(); // Trigger the Google login flow
+    } else {
+      console.error('Google client not initialized');
     }
   };
 
@@ -66,10 +88,9 @@ function App() {
         </div>
         {!user ? (
           <div className="login-container">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() => console.log('Login Failed')}
-            />
+            <button onClick={handleLogin} className="login-btn">
+              Login with Google
+            </button>
           </div>
         ) : (
           <div className="user-container">
