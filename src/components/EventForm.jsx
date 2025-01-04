@@ -41,7 +41,7 @@ const EventForm = ({ userId, onClose, eventToEdit }) => {
       let response;
       if (isEditing) {
         // Update existing event
-        response = await ApiClient.fetch(`/api/events/${eventToEdit.id}`, {
+        response = await ApiClient.fetch(`/api/events/${eventToEdit._id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

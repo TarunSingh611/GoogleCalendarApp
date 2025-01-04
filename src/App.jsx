@@ -59,7 +59,7 @@ function App() {
 
   const checkBackendStatus = async () => {
     try {
-      const response = await ApiClient.fetch('/status');
+      const response = await ApiClient.fetch('/');
       setBackendStatus(response.status === 'OK' ? 'connected' : 'error');
     } catch (error) {
       setBackendStatus('error');

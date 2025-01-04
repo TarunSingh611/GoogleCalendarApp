@@ -33,7 +33,7 @@ const EventList = ({ userId }) => {
   };
 
   const handleDelete = async (event) => {
-    const eventId = event?.id;
+    const eventId = event?._id;
     if (window.confirm('Are you sure you want to delete this event?')) {
       try {
         const response = await ApiClient.fetch(`/api/events/${eventId}`, {
@@ -44,7 +44,7 @@ const EventList = ({ userId }) => {
         });
         
         if (response.success) {
-          setEvents(events.filter(event => event.id !== eventId));
+          setEvents(events.filter(event => event._id !== eventId));
         } else {
           throw new Error('Failed to delete event');
         }
